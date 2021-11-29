@@ -116,14 +116,19 @@ func (s *Storage) Term(index uint64) (term uint64, err error) {
 	key, err := entryKey(s.nodeID, index)
 	ce(err)
 	data, cl, err := s.peb.Get(key)
-	ce(err)
-	defer cl.Close()
-	var entry raftpb.Entry
-	ce(sb.Copy(
-		sb.Decode(bytes.NewReader(data)),
-		sb.Unmarshal(&entry),
-	))
-	return entry.Term, nil
+	ce(err, e4.Ignore(pebble.ErrNotFound))
+	if err == pebble.ErrNotFound {
+		err = nil
+	} else {
+		defer cl.Close()
+		var entry raftpb.Entry
+		ce(sb.Copy(
+			sb.Decode(bytes.NewReader(data)),
+			sb.Unmarshal(&entry),
+		))
+		term = entry.Term
+	}
+	return
 }
 
 func (s *Storage) LastIndex() (idx uint64, err error) {
@@ -186,8 +191,18 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 	))
 	lowerBound := lowerBoundBuf.Bytes()
 
+	upperBoundBuf := new(bytes.Buffer)
+	ce(sb.Copy(
+		sb.Marshal(func() (NodeID, uint8, *sb.Token) {
+			return s.nodeID, DBKeyEntry, sb.Max
+		}),
+		sb.Encode(upperBoundBuf),
+	))
+	upperBound := upperBoundBuf.Bytes()
+
 	iter := s.peb.NewIter(&pebble.IterOptions{
 		LowerBound: lowerBound,
+		UpperBound: upperBound,
 	})
 	defer func() {
 		ce(iter.Error())
@@ -196,11 +211,11 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 
 	if !iter.First() {
 		//TODO what to return?
-		return 0, nil
+		return 1, nil
 	}
 	if !iter.Valid() {
 		//TODO what to return?
-		return 0, nil
+		return 1, nil
 	}
 
 	var entry raftpb.Entry

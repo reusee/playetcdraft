@@ -85,7 +85,7 @@ func main() {
 						}
 
 						for _, entry := range ready.CommittedEntries {
-							//TODO apply
+							//TODO commit entry
 							pt("fixme: process entry %+v\n", entry)
 							if entry.Type == raftpb.EntryConfChange {
 								var cc raftpb.ConfChange

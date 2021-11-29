@@ -18,12 +18,16 @@ func (_ Global) PebbleDB() *pebble.DB {
 			Equal: func(a, b []byte) bool {
 				return bytes.Equal(a, b)
 			},
+			AbbreviatedKey: func(key []byte) uint64 {
+				return 0
+			},
 			Separator: func(dst, a, b []byte) []byte {
 				return a
 			},
 			Successor: func(dst, a []byte) []byte {
 				return a
 			},
+			Name: "sb-comparer",
 		},
 	})
 	ce(err)

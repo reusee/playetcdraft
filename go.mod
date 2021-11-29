@@ -25,7 +25,7 @@ require (
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/kr/text v0.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/reusee/pr v0.0.0-20211003125556-3e6e9c7537ae // indirect
+	github.com/reusee/pr v0.0.0-20211128075657-2a34fce9bf06 // indirect
 	golang.org/x/exp v0.0.0-20200513190911-00229845015e // indirect
 	golang.org/x/sys v0.0.0-20210909193231-528a39cd75f3 // indirect
 	google.golang.org/protobuf v1.26.0 // indirect

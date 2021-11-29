@@ -38,6 +38,7 @@ const (
 	DBKeyHardState = iota + 1
 	DBKeyEntry
 	DBKeySnapshot
+	DBKeyConfState
 )
 
 var writeOptions = &pebble.WriteOptions{
@@ -53,14 +54,8 @@ func (_ NodeScope) SaveHardState(
 	return func(batch *pebble.Batch, state raftpb.HardState) (err error) {
 		defer he(&err)
 
-		keyBuf := new(bytes.Buffer)
-		ce(sb.Copy(
-			sb.Marshal(func() (NodeID, uint8) {
-				return nodeID, DBKeyHardState
-			}),
-			sb.Encode(keyBuf),
-		))
-		key := keyBuf.Bytes()
+		key, err := hardStateKey(nodeID)
+		ce(err)
 
 		valueBuf := new(bytes.Buffer)
 		ce(sb.Copy(
@@ -75,6 +70,20 @@ func (_ NodeScope) SaveHardState(
 	}
 }
 
+func hardStateKey(nodeID NodeID) ([]byte, error) {
+	keyBuf := new(bytes.Buffer)
+	if err := sb.Copy(
+		sb.Marshal(func() (NodeID, uint8) {
+			return nodeID, DBKeyHardState
+		}),
+		sb.Encode(keyBuf),
+	); err != nil {
+		return nil, err
+	}
+	key := keyBuf.Bytes()
+	return key, nil
+}
+
 type SaveEntry func(batch *pebble.Batch, entry raftpb.Entry) error
 
 func (_ NodeScope) SaveEntry(
@@ -85,14 +94,8 @@ func (_ NodeScope) SaveEntry(
 	return func(batch *pebble.Batch, entry raftpb.Entry) (err error) {
 		defer he(&err)
 
-		keyBuf := new(bytes.Buffer)
-		ce(sb.Copy(
-			sb.Marshal(func() (NodeID, uint8, uint64) {
-				return nodeID, DBKeyEntry, entry.Index
-			}),
-			sb.Encode(keyBuf),
-		))
-		key := keyBuf.Bytes()
+		key, err := entryKey(nodeID, entry.Index)
+		ce(err)
 
 		// discard
 		upperBoundBuf := new(bytes.Buffer)
@@ -108,12 +111,14 @@ func (_ NodeScope) SaveEntry(
 			LowerBound: key,
 			UpperBound: upperBound,
 		})
+		defer func() {
+			ce(iter.Error())
+			ce(iter.Close())
+		}()
 		for iter.First(); iter.Valid(); iter.Next() {
 			key := iter.Key()
 			ce(batch.Delete(key, writeOptions))
 		}
-		ce(iter.Error())
-		ce(iter.Close())
 
 		// save
 		valueBuf := new(bytes.Buffer)
@@ -127,6 +132,20 @@ func (_ NodeScope) SaveEntry(
 
 		return
 	}
+}
+
+func entryKey(nodeID NodeID, index uint64) ([]byte, error) {
+	keyBuf := new(bytes.Buffer)
+	if err := sb.Copy(
+		sb.Marshal(func() (NodeID, uint8, uint64) {
+			return nodeID, DBKeyEntry, index
+		}),
+		sb.Encode(keyBuf),
+	); err != nil {
+		return nil, err
+	}
+	key := keyBuf.Bytes()
+	return key, nil
 }
 
 type SaveSnapshot func(batch *pebble.Batch, snapshot raftpb.Snapshot) error
@@ -160,7 +179,45 @@ func (_ NodeScope) SaveSnapshot(
 	}
 }
 
-var emptyHardState = raftpb.HardState{}
+type SaveConfState func(*raftpb.ConfState) error
+
+func (_ NodeScope) SaveConfState(
+	nodeID NodeID,
+	peb *pebble.DB,
+) SaveConfState {
+	// (NodeID, DBKeyConfState) -> ConfState
+	return func(confState *raftpb.ConfState) (err error) {
+		defer he(&err)
+
+		key, err := confStateKey(nodeID)
+		ce(err)
+
+		valueBuf := new(bytes.Buffer)
+		ce(sb.Copy(
+			sb.Marshal(confState),
+			sb.Encode(valueBuf),
+		))
+		value := valueBuf.Bytes()
+
+		ce(peb.Set(key, value, writeOptions))
+
+		return
+	}
+}
+
+func confStateKey(nodeID NodeID) ([]byte, error) {
+	keyBuf := new(bytes.Buffer)
+	if err := sb.Copy(
+		sb.Marshal(func() (NodeID, uint8) {
+			return nodeID, DBKeyConfState
+		}),
+		sb.Encode(keyBuf),
+	); err != nil {
+		return nil, err
+	}
+	key := keyBuf.Bytes()
+	return key, nil
+}
 
 type SaveReady func(ready raft.Ready) error
 
@@ -171,9 +228,9 @@ func (_ NodeScope) SaveReady(
 	saveSnapshot SaveSnapshot,
 ) SaveReady {
 	return func(ready raft.Ready) (err error) {
-		if ready.Entries == nil &&
-			ready.HardState == emptyHardState &&
-			ready.Snapshot.Size() == 0 {
+		if len(ready.Entries) == 0 &&
+			raft.IsEmptyHardState(ready.HardState) &&
+			raft.IsEmptySnap(ready.Snapshot) {
 			return nil
 		}
 
@@ -189,10 +246,10 @@ func (_ NodeScope) SaveReady(
 		for _, entry := range ready.Entries {
 			ce(saveEntry(batch, entry))
 		}
-		if ready.HardState != emptyHardState {
+		if !raft.IsEmptyHardState(ready.HardState) {
 			ce(saveHardState(batch, ready.HardState))
 		}
-		if ready.Snapshot.Size() > 0 {
+		if !raft.IsEmptySnap(ready.Snapshot) {
 			ce(saveSnapshot(batch, ready.Snapshot))
 		}
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"runtime"
 	"sync"
 	"time"
 
@@ -59,27 +58,25 @@ func (_ NodeScope) RunLoop(
 		var appliedIndex uint64
 		var readStates []raft.ReadState
 		applyCh := make(chan raftpb.Entry)
-		for i := 0; i < runtime.NumCPU(); i++ {
-			wt.Go(func() {
-				for {
-					select {
-					case <-wt.Ctx.Done():
-						return
-					case entry := <-applyCh:
-						proposal := new(SetProposal)
-						ce(proto.Unmarshal(entry.Data, proposal))
-						ce(peb.Set(proposal.Key, proposal.Value, writeOptions))
-						pt("apply %d\n", entry.Index)
-						cond.L.Lock()
-						if entry.Index > appliedIndex {
-							appliedIndex = entry.Index
-						}
-						cond.L.Unlock()
-						cond.Signal()
+		wt.Go(func() {
+			for {
+				select {
+				case <-wt.Ctx.Done():
+					return
+				case entry := <-applyCh:
+					proposal := new(SetProposal)
+					ce(proto.Unmarshal(entry.Data, proposal))
+					ce(peb.Set(proposal.Key, proposal.Value, writeOptions))
+					pt("apply %d\n", entry.Index)
+					cond.L.Lock()
+					if entry.Index > appliedIndex {
+						appliedIndex = entry.Index
 					}
+					cond.L.Unlock()
+					cond.Signal()
 				}
-			})
-		}
+			}
+		})
 
 		// read state
 		wt.Go(func() {

@@ -43,11 +43,14 @@ func main() {
 				setInit SetInitialState,
 			) {
 
+				var node raft.Node
+				nodeOK := make(chan struct{})
+
+				// raft
 				wt.Go(func() {
 
 					exists, err := nodeExists(nodeID)
 					ce(err)
-					var node raft.Node
 					if exists {
 						pt("restart node %v\n", nodeID)
 						node = raft.RestartNode(config)
@@ -56,6 +59,7 @@ func main() {
 						ce(setInit(nodeID))
 						node = raft.StartNode(config, raftPeers)
 					}
+					close(nodeOK)
 
 					for {
 						select {
@@ -109,6 +113,23 @@ func main() {
 						}
 					}
 
+				})
+
+				// kv
+				wt.Go(func() {
+					<-nodeOK
+					kvDefs := dscope.Methods(new(KVScope))
+					kvDefs = append(kvDefs, &node)
+					kvScope := nodeScope.Fork(kvDefs...)
+
+					kvScope.Call(func(
+						set Set,
+						get Get,
+					) {
+
+						ce(set(42, 42))
+
+					})
 				})
 
 			})

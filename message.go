@@ -38,8 +38,15 @@ func (_ NodeScope) Message(
 				fmt.Errorf("%d not found", nodeID),
 			)(ErrNodeNotFound)
 		}
+		retry := 10
+	connect:
 		conn, err := dialer.DialContext(wt.Ctx, "tcp", toPeer.DialAddr)
 		if err != nil {
+			if retry > 0 {
+				retry--
+				time.Sleep(time.Second)
+				goto connect
+			}
 			return nil, we(err)
 		}
 		outboundConns[nodeID] = conn

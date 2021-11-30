@@ -1,6 +1,8 @@
 package main
 
 import (
+	"runtime"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/pebble"
@@ -17,7 +19,9 @@ type RunLoop func(
 
 type RunInLoop func(fn func())
 
-type Reading map[[8]byte]chan struct{}
+type Reading struct {
+	*sync.Map
+}
 
 func (_ NodeScope) RunLoop(
 	wt *pr.WaitTree,
@@ -41,13 +45,68 @@ func (_ NodeScope) RunLoop(
 
 	fns := make(chan func())
 
-	reading = make(map[[8]byte]chan struct{})
+	reading = Reading{
+		Map: new(sync.Map),
+	}
 
 	run = func(
 		nodePtr *raft.Node,
 		nodeOK chan struct{},
 	) {
 
+		// apply
+		cond := sync.NewCond(new(sync.Mutex))
+		var appliedIndex uint64
+		var readStates []raft.ReadState
+		applyCh := make(chan raftpb.Entry)
+		for i := 0; i < runtime.NumCPU(); i++ {
+			wt.Go(func() {
+				for {
+					select {
+					case <-wt.Ctx.Done():
+						return
+					case entry := <-applyCh:
+						proposal := new(SetProposal)
+						ce(proto.Unmarshal(entry.Data, proposal))
+						ce(peb.Set(proposal.Key, proposal.Value, writeOptions))
+						pt("apply %d\n", entry.Index)
+						cond.L.Lock()
+						if entry.Index > appliedIndex {
+							appliedIndex = entry.Index
+						}
+						cond.L.Unlock()
+						cond.Signal()
+					}
+				}
+			})
+		}
+
+		// read state
+		wt.Go(func() {
+			for {
+				cond.L.Lock()
+				for len(readStates) == 0 ||
+					readStates[0].Index > appliedIndex {
+					cond.Wait()
+				}
+				newReadStates := readStates[:0]
+				for _, state := range readStates {
+					if state.Index > appliedIndex {
+						newReadStates = append(newReadStates, state)
+					} else {
+						pt("%d ready\n", state.Index)
+						key := *(*[8]byte)(state.RequestCtx)
+						if v, ok := reading.Load(key); ok {
+							close(v.(chan struct{}))
+						}
+					}
+				}
+				readStates = newReadStates
+				cond.L.Unlock()
+			}
+		})
+
+		// loop
 		wt.Go(func() {
 
 			exists, err := nodeExists(nodeID)
@@ -113,21 +172,19 @@ func (_ NodeScope) RunLoop(
 
 						case raftpb.EntryNormal:
 							if len(entry.Data) > 0 {
-								proposal := new(SetProposal)
-								ce(proto.Unmarshal(entry.Data, proposal))
-								ce(peb.Set(proposal.Key, proposal.Value, writeOptions))
+								applyCh <- entry
 							}
 
 						}
 
 					}
 
+					cond.L.Lock()
 					for _, state := range ready.ReadStates {
-						key := *(*[8]byte)(state.RequestCtx)
-						if c, ok := reading[key]; ok {
-							close(c)
-						}
+						readStates = append(readStates, state)
 					}
+					cond.L.Unlock()
+					cond.Signal()
 
 					node.Advance()
 

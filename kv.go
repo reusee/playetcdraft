@@ -70,7 +70,7 @@ func (_ KVScope) KV(
 
 		ready := make(chan struct{})
 		runInLoop(func() {
-			reading[rKey] = ready
+			reading.Store(rKey, ready)
 		})
 		select {
 		case <-ready:

@@ -94,8 +94,12 @@ func (s *Storage) Entries(low, high, max uint64) (entries []raftpb.Entry, err er
 		ce(iter.Close())
 	}()
 
+	if !iter.First() {
+		return nil, raft.ErrUnavailable
+	}
+
 	var size uint64
-	for iter.First(); iter.Valid(); iter.Next() {
+	for ; iter.Valid(); iter.Next() {
 		var entry raftpb.Entry
 		ce(sb.Copy(
 			sb.Decode(bytes.NewReader(iter.Value())),
@@ -164,9 +168,6 @@ func (s *Storage) LastIndex() (idx uint64, err error) {
 	if !iter.Last() {
 		panic("impossible")
 	}
-	if !iter.Valid() {
-		panic("impossible")
-	}
 
 	var entry raftpb.Entry
 	ce(sb.Copy(
@@ -208,9 +209,6 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 	}()
 
 	if !iter.First() {
-		panic("impossible")
-	}
-	if !iter.Valid() {
 		panic("impossible")
 	}
 

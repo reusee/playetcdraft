@@ -27,11 +27,11 @@ func (_ NodeScope) Config(
 	}
 }
 
-type NodeIsInDB func(nodeID NodeID) (bool, error)
+type NodeExists func(nodeID NodeID) (bool, error)
 
-func (_ Global) NodeIsInDB(
+func (_ Global) NodeExists(
 	peb *pebble.DB,
-) NodeIsInDB {
+) NodeExists {
 	return func(nodeID NodeID) (exists bool, err error) {
 		defer he(&err)
 

@@ -37,7 +37,7 @@ func main() {
 				saveReady SaveReady,
 				saveConfState SaveConfState,
 				wt *pr.WaitTree,
-				nodeIsInDB NodeIsInDB,
+				nodeExists NodeExists,
 				send SendMessage,
 				receive ReceiveMessage,
 				setInit SetInitialState,
@@ -45,7 +45,7 @@ func main() {
 
 				wt.Go(func() {
 
-					exists, err := nodeIsInDB(nodeID)
+					exists, err := nodeExists(nodeID)
 					ce(err)
 					var node raft.Node
 					if exists {

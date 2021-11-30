@@ -63,7 +63,7 @@ func (_ NodeScope) Message(
 				delete(outboundConns, NodeID(msg.To))
 			}
 		}()
-		ce(conn.SetWriteDeadline(time.Now().Add(time.Second * 16)))
+		ce(conn.SetWriteDeadline(time.Now().Add(time.Second * 32)))
 		ce(sb.Copy(
 			sb.Marshal(msg),
 			sb.Encode(conn),

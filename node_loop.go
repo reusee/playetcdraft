@@ -15,6 +15,10 @@ type RunLoop func(
 	nodeOK chan struct{},
 )
 
+type RunInLoop func(fn func())
+
+type Reading map[[8]byte]chan struct{}
+
 func (_ NodeScope) RunLoop(
 	wt *pr.WaitTree,
 	nodeExists NodeExists,
@@ -29,9 +33,17 @@ func (_ NodeScope) RunLoop(
 	send SendMessage,
 	saveConfState SaveConfState,
 	peb *pebble.DB,
-) RunLoop {
+) (
+	run RunLoop,
+	runInLoop RunInLoop,
+	reading Reading,
+) {
 
-	return func(
+	fns := make(chan func())
+
+	reading = make(map[[8]byte]chan struct{})
+
+	run = func(
 		nodePtr *raft.Node,
 		nodeOK chan struct{},
 	) {
@@ -56,6 +68,9 @@ func (_ NodeScope) RunLoop(
 
 				case <-wt.Ctx.Done():
 					return
+
+				case fn := <-fns:
+					fn()
 
 				case <-ticker.C:
 					node.Tick()
@@ -107,6 +122,14 @@ func (_ NodeScope) RunLoop(
 
 					}
 
+					for _, state := range ready.ReadStates {
+						pt("%+v\n", state)
+						key := *(*[8]byte)(state.RequestCtx)
+						if c, ok := reading[key]; ok {
+							close(c)
+						}
+					}
+
 					node.Advance()
 
 				}
@@ -114,4 +137,10 @@ func (_ NodeScope) RunLoop(
 
 		})
 	}
+
+	runInLoop = func(fn func()) {
+		fns <- fn
+	}
+
+	return
 }

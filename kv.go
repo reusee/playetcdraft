@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"sync/atomic"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/reusee/e4"
@@ -21,6 +23,8 @@ func (_ KVScope) KV(
 	peb *pebble.DB,
 	node raft.Node,
 	wt *pr.WaitTree,
+	runInLoop RunInLoop,
+	reading Reading,
 ) (
 	set Set,
 	get Get,
@@ -55,8 +59,21 @@ func (_ KVScope) KV(
 		return
 	}
 
+	var reqID uint64
+
 	get = func(key any, target any) (err error) {
 		defer he(&err)
+
+		data := make([]byte, 8)
+		binary.LittleEndian.PutUint64(data, atomic.AddUint64(&reqID, 1))
+		ce(node.ReadIndex(wt.Ctx, data))
+		rKey := *(*[8]byte)(data)
+
+		ready := make(chan struct{})
+		runInLoop(func() {
+			reading[rKey] = ready
+		})
+		<-ready
 
 		buf := new(bytes.Buffer)
 		// (NamespaceKV, key) -> value
@@ -79,6 +96,7 @@ func (_ KVScope) KV(
 		ce(cl.Close())
 
 		return
+
 	}
 
 	return

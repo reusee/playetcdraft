@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/reusee/dscope"
@@ -51,12 +52,14 @@ func main() {
 						get Get,
 					) {
 
-						ce(set(42, 42))
+						n := rand.Int63()
+						ce(set(n, n))
 
 						time.Sleep(time.Second)
-						var i int
-						ce(get(42, &i))
-						pt("%d\n", i)
+
+						var i int64
+						ce(get(n, &i))
+						pt("%v\n", i)
 
 					})
 				})

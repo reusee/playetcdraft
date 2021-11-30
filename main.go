@@ -1,7 +1,6 @@
 package main
 
 import (
-	"math/rand"
 	"time"
 
 	"github.com/reusee/dscope"
@@ -52,14 +51,18 @@ func main() {
 						get Get,
 					) {
 
-						n := rand.Int63()
-						ce(set(n, n))
+						ce(set(nodeID, int(nodeID)))
 
 						time.Sleep(time.Second)
 
-						var i int64
-						ce(get(n, &i))
-						pt("%v\n", i)
+						for n := range peers {
+							var i int
+							ce(get(n, &i))
+							pt("%d %d %d\n", nodeID, n, i)
+							if int(n) != i {
+								panic("bad value")
+							}
+						}
 
 					})
 				})

@@ -123,7 +123,6 @@ func (_ NodeScope) RunLoop(
 					}
 
 					for _, state := range ready.ReadStates {
-						pt("%+v\n", state)
 						key := *(*[8]byte)(state.RequestCtx)
 						if c, ok := reading[key]; ok {
 							close(c)

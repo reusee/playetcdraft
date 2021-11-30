@@ -51,8 +51,6 @@ func main() {
 						node = raft.StartNode(config, raftPeers)
 					}
 
-					id := uint64(nodeID)
-
 					for {
 						select {
 
@@ -66,7 +64,7 @@ func main() {
 							ce(saveReady(ready))
 
 							for _, msg := range ready.Messages {
-								if msg.To == id {
+								if msg.To == peer.ID {
 									node.Step(wt.Ctx, msg)
 								} else {
 									//TODO send

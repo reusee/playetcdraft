@@ -41,13 +41,13 @@ const (
 	NamespaceKV
 )
 
-type DBKey uint8
+type Atom uint8
 
 const (
-	DBKeyHardState DBKey = iota + 1
-	DBKeyEntry
-	DBKeySnapshot
-	DBKeyConfState
+	AtomHardState Atom = iota + 1
+	AtomEntry
+	AtomSnapshot
+	AtomConfState
 )
 
 var writeOptions = &pebble.WriteOptions{
@@ -82,8 +82,8 @@ func (_ NodeScope) SaveHardState(
 func hardStateKey(nodeID NodeID) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (Namespace, NodeID, DBKey) {
-			return NamespaceRaft, nodeID, DBKeyHardState
+		sb.Marshal(func() (Namespace, NodeID, Atom) {
+			return NamespaceRaft, nodeID, AtomHardState
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {
@@ -109,8 +109,8 @@ func (_ NodeScope) SaveEntry(
 		// discard
 		upperBoundBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
-				return NamespaceRaft, nodeID, DBKeyEntry, sb.Max
+			sb.Marshal(func() (Namespace, NodeID, Atom, *sb.Token) {
+				return NamespaceRaft, nodeID, AtomEntry, sb.Max
 			}),
 			sb.Encode(upperBoundBuf),
 		))
@@ -146,8 +146,8 @@ func (_ NodeScope) SaveEntry(
 func entryKey(nodeID NodeID, index uint64) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (Namespace, NodeID, DBKey, uint64) {
-			return NamespaceRaft, nodeID, DBKeyEntry, index
+		sb.Marshal(func() (Namespace, NodeID, Atom, uint64) {
+			return NamespaceRaft, nodeID, AtomEntry, index
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {
@@ -168,8 +168,8 @@ func (_ NodeScope) SaveSnapshot(
 
 		keyBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() (Namespace, NodeID, DBKey) {
-				return NamespaceRaft, nodeID, DBKeySnapshot
+			sb.Marshal(func() (Namespace, NodeID, Atom) {
+				return NamespaceRaft, nodeID, AtomSnapshot
 			}),
 			sb.Encode(keyBuf),
 		))
@@ -217,8 +217,8 @@ func (_ NodeScope) SaveConfState(
 func confStateKey(nodeID NodeID) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (Namespace, NodeID, DBKey) {
-			return NamespaceRaft, nodeID, DBKeyConfState
+		sb.Marshal(func() (Namespace, NodeID, Atom) {
+			return NamespaceRaft, nodeID, AtomConfState
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {

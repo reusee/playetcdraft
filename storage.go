@@ -69,8 +69,8 @@ func (s *Storage) Entries(low, high, max uint64) (entries []raftpb.Entry, err er
 
 	lowerBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, uint64) {
-			return s.nodeID, DBKeyEntry, low
+		sb.Marshal(func() (Namespace, NodeID, DBKey, uint64) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, low
 		}),
 		sb.Encode(lowerBoundBuf),
 	))
@@ -78,8 +78,8 @@ func (s *Storage) Entries(low, high, max uint64) (entries []raftpb.Entry, err er
 
 	upperBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, uint64) {
-			return s.nodeID, DBKeyEntry, high
+		sb.Marshal(func() (Namespace, NodeID, DBKey, uint64) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, high
 		}),
 		sb.Encode(upperBoundBuf),
 	))
@@ -136,8 +136,8 @@ func (s *Storage) LastIndex() (idx uint64, err error) {
 
 	lowerBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, *sb.Token) {
-			return s.nodeID, DBKeyEntry, sb.Min
+		sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, sb.Min
 		}),
 		sb.Encode(lowerBoundBuf),
 	))
@@ -145,8 +145,8 @@ func (s *Storage) LastIndex() (idx uint64, err error) {
 
 	upperBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, *sb.Token) {
-			return s.nodeID, DBKeyEntry, sb.Max
+		sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, sb.Max
 		}),
 		sb.Encode(upperBoundBuf),
 	))
@@ -184,8 +184,8 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 
 	lowerBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, *sb.Token) {
-			return s.nodeID, DBKeyEntry, sb.Min
+		sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, sb.Min
 		}),
 		sb.Encode(lowerBoundBuf),
 	))
@@ -193,8 +193,8 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 
 	upperBoundBuf := new(bytes.Buffer)
 	ce(sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, *sb.Token) {
-			return s.nodeID, DBKeyEntry, sb.Max
+		sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
+			return NamespaceRaft, s.nodeID, DBKeyEntry, sb.Max
 		}),
 		sb.Encode(upperBoundBuf),
 	))

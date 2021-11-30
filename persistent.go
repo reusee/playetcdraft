@@ -34,8 +34,17 @@ func (_ Global) PebbleDB() *pebble.DB {
 	return db
 }
 
+type Namespace uint8
+
 const (
-	DBKeyHardState = iota + 1
+	NamespaceRaft Namespace = iota + 1
+	NamespaceKV
+)
+
+type DBKey uint8
+
+const (
+	DBKeyHardState DBKey = iota + 1
 	DBKeyEntry
 	DBKeySnapshot
 	DBKeyConfState
@@ -73,8 +82,8 @@ func (_ NodeScope) SaveHardState(
 func hardStateKey(nodeID NodeID) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (NodeID, uint8) {
-			return nodeID, DBKeyHardState
+		sb.Marshal(func() (Namespace, NodeID, DBKey) {
+			return NamespaceRaft, nodeID, DBKeyHardState
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {
@@ -100,8 +109,8 @@ func (_ NodeScope) SaveEntry(
 		// discard
 		upperBoundBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() (NodeID, uint8, *sb.Token) {
-				return nodeID, DBKeyEntry, sb.Max
+			sb.Marshal(func() (Namespace, NodeID, DBKey, *sb.Token) {
+				return NamespaceRaft, nodeID, DBKeyEntry, sb.Max
 			}),
 			sb.Encode(upperBoundBuf),
 		))
@@ -137,8 +146,8 @@ func (_ NodeScope) SaveEntry(
 func entryKey(nodeID NodeID, index uint64) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (NodeID, uint8, uint64) {
-			return nodeID, DBKeyEntry, index
+		sb.Marshal(func() (Namespace, NodeID, DBKey, uint64) {
+			return NamespaceRaft, nodeID, DBKeyEntry, index
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {
@@ -159,8 +168,8 @@ func (_ NodeScope) SaveSnapshot(
 
 		keyBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() (NodeID, uint8) {
-				return nodeID, DBKeySnapshot
+			sb.Marshal(func() (Namespace, NodeID, DBKey) {
+				return NamespaceRaft, nodeID, DBKeySnapshot
 			}),
 			sb.Encode(keyBuf),
 		))
@@ -208,8 +217,8 @@ func (_ NodeScope) SaveConfState(
 func confStateKey(nodeID NodeID) ([]byte, error) {
 	keyBuf := new(bytes.Buffer)
 	if err := sb.Copy(
-		sb.Marshal(func() (NodeID, uint8) {
-			return nodeID, DBKeyConfState
+		sb.Marshal(func() (Namespace, NodeID, DBKey) {
+			return NamespaceRaft, nodeID, DBKeyConfState
 		}),
 		sb.Encode(keyBuf),
 	); err != nil {

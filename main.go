@@ -74,7 +74,15 @@ func main() {
 								if msg.To == raftPeer.ID {
 									node.Step(wt.Ctx, msg)
 								} else {
-									ce(send(msg))
+									err := send(msg)
+									if msg.Type == raftpb.MsgSnap {
+										if err != nil {
+											node.ReportSnapshot(msg.To, raft.SnapshotFailure)
+										} else {
+											node.ReportSnapshot(msg.To, raft.SnapshotFinish)
+										}
+									}
+									ce(err)
 								}
 							}
 

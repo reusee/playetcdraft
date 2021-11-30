@@ -36,8 +36,8 @@ func (_ Global) NodeIsInDB(
 
 		lowerBoundBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() NodeID {
-				return nodeID
+			sb.Marshal(func() (Namespace, NodeID) {
+				return NamespaceRaft, nodeID
 			}),
 			sb.Encode(lowerBoundBuf),
 		))

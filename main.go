@@ -17,16 +17,18 @@ func main() {
 
 	global.Call(func(
 		raftPeers []raft.Peer,
+		peers Peers,
 	) {
 
 		ticker := time.NewTicker(time.Millisecond * 100)
 
-		for _, peer := range raftPeers {
-			peer := peer
-			nodeID := NodeID(peer.ID)
+		for _, raftPeer := range raftPeers {
+			raftPeer := raftPeer
+			nodeID := NodeID(raftPeer.ID)
+			peer := peers[nodeID]
 
 			defs := dscope.Methods(new(NodeScope))
-			defs = append(defs, &nodeID)
+			defs = append(defs, &nodeID, &peer)
 			nodeScope := global.Fork(defs...)
 
 			nodeScope.Call(func(
@@ -36,6 +38,8 @@ func main() {
 				saveConfState SaveConfState,
 				wt *pr.WaitTree,
 				nodeIsInDB NodeIsInDB,
+				send SendMessage,
+				receive ReceiveMessage,
 			) {
 
 				wt.Go(func() {
@@ -60,15 +64,17 @@ func main() {
 						case <-ticker.C:
 							node.Tick()
 
+						case msg := <-receive:
+							node.Step(wt.Ctx, msg)
+
 						case ready := <-node.Ready():
 							ce(saveReady(ready))
 
 							for _, msg := range ready.Messages {
-								if msg.To == peer.ID {
+								if msg.To == raftPeer.ID {
 									node.Step(wt.Ctx, msg)
 								} else {
-									//TODO send
-									pt("fixme: send %+v\n", msg)
+									ce(send(msg))
 								}
 							}
 
@@ -79,7 +85,7 @@ func main() {
 
 							for _, entry := range ready.CommittedEntries {
 								//TODO commit entry
-								pt("fixme: process entry %+v\n", entry)
+								pt("fixme: commit entry %+v\n", entry)
 								if entry.Type == raftpb.EntryConfChange {
 									var cc raftpb.ConfChange
 									ce(cc.Unmarshal(entry.Data))

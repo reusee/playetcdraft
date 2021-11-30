@@ -7,7 +7,9 @@ import (
 )
 
 var (
-	pt = fmt.Printf
 	he = e4.Handle
-	ce = e4.Check
+	ce = e4.Check.With(e4.WrapStacktrace)
+	we = e4.Wrap.With(e4.WrapStacktrace)
+
+	pt = fmt.Printf
 )

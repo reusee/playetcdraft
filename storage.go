@@ -162,12 +162,10 @@ func (s *Storage) LastIndex() (idx uint64, err error) {
 	}()
 
 	if !iter.Last() {
-		//TODO what to return?
-		return 0, nil
+		panic("impossible")
 	}
 	if !iter.Valid() {
-		//TODO what to return?
-		return 0, nil
+		panic("impossible")
 	}
 
 	var entry raftpb.Entry
@@ -210,12 +208,10 @@ func (s *Storage) FirstIndex() (idx uint64, err error) {
 	}()
 
 	if !iter.First() {
-		//TODO what to return?
-		return 1, nil
+		panic("impossible")
 	}
 	if !iter.Valid() {
-		//TODO what to return?
-		return 1, nil
+		panic("impossible")
 	}
 
 	var entry raftpb.Entry

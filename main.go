@@ -40,6 +40,7 @@ func main() {
 				nodeIsInDB NodeIsInDB,
 				send SendMessage,
 				receive ReceiveMessage,
+				setInit SetInitialState,
 			) {
 
 				wt.Go(func() {
@@ -52,6 +53,7 @@ func main() {
 						node = raft.RestartNode(config)
 					} else {
 						pt("start node %v\n", nodeID)
+						ce(setInit(nodeID))
 						node = raft.StartNode(config, raftPeers)
 					}
 

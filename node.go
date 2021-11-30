@@ -6,6 +6,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
+	"go.etcd.io/etcd/raft/v3/raftpb"
 )
 
 type NodeScope struct{}
@@ -36,15 +37,24 @@ func (_ Global) NodeIsInDB(
 
 		lowerBoundBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(func() (Namespace, NodeID) {
-				return NamespaceRaft, nodeID
+			sb.Marshal(func() (Namespace, NodeID, *sb.Token) {
+				return NamespaceRaft, nodeID, sb.Min
 			}),
 			sb.Encode(lowerBoundBuf),
 		))
 		lowerBound := lowerBoundBuf.Bytes()
+		upperBoundBuf := new(bytes.Buffer)
+		ce(sb.Copy(
+			sb.Marshal(func() (Namespace, NodeID, *sb.Token) {
+				return NamespaceRaft, nodeID, sb.Max
+			}),
+			sb.Encode(upperBoundBuf),
+		))
+		upperBound := upperBoundBuf.Bytes()
 
 		iter := peb.NewIter(&pebble.IterOptions{
 			LowerBound: lowerBound,
+			UpperBound: upperBound,
 		})
 		defer func() {
 			ce(iter.Error())
@@ -58,5 +68,60 @@ func (_ Global) NodeIsInDB(
 		}
 
 		return n > 0, nil
+	}
+}
+
+type SetInitialState func(nodeID NodeID) error
+
+func (_ NodeScope) SetInitialState(
+	peb *pebble.DB,
+	peers Peers,
+) SetInitialState {
+	return func(nodeID NodeID) (err error) {
+		defer he(&err)
+
+		batch := peb.NewBatch()
+		defer func() {
+			if err == nil {
+				err = batch.Commit(writeOptions)
+			} else {
+				batch.Close()
+			}
+		}()
+
+		// set entry
+		key, err := entryKey(nodeID, 42)
+		ce(err)
+		buf := new(bytes.Buffer)
+		ce(sb.Copy(
+			sb.Marshal(raftpb.Entry{
+				Term:  0,
+				Index: 42,
+				Type:  raftpb.EntryNormal,
+			}),
+			sb.Encode(buf),
+		))
+		value := buf.Bytes()
+		ce(batch.Set(key, value, writeOptions))
+
+		// set conf state
+		key, err = confStateKey(nodeID)
+		ce(err)
+		buf.Reset()
+		ce(sb.Copy(
+			sb.Marshal(raftpb.ConfState{
+				Voters: func() (ret []uint64) {
+					for id := range peers {
+						ret = append(ret, uint64(id))
+					}
+					return
+				}(),
+			}),
+			sb.Encode(buf),
+		))
+		value = buf.Bytes()
+		ce(batch.Set(key, value, writeOptions))
+
+		return
 	}
 }

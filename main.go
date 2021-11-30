@@ -3,10 +3,12 @@ package main
 import (
 	"time"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/reusee/dscope"
 	"github.com/reusee/pr"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
+	"google.golang.org/protobuf/proto"
 )
 
 type Global struct{}
@@ -41,6 +43,7 @@ func main() {
 				send SendMessage,
 				receive ReceiveMessage,
 				setInit SetInitialState,
+				peb *pebble.DB,
 			) {
 
 				var node raft.Node
@@ -98,14 +101,23 @@ func main() {
 							}
 
 							for _, entry := range ready.CommittedEntries {
-								//TODO commit entry
-								pt("fixme: commit entry %+v\n", entry)
-								if entry.Type == raftpb.EntryConfChange {
+								switch entry.Type {
+
+								case raftpb.EntryConfChange:
 									var cc raftpb.ConfChange
 									ce(cc.Unmarshal(entry.Data))
 									state := node.ApplyConfChange(cc)
 									ce(saveConfState(state))
+
+								case raftpb.EntryNormal:
+									if len(entry.Data) > 0 {
+										proposal := new(SetProposal)
+										ce(proto.Unmarshal(entry.Data, proposal))
+										ce(peb.Set(proposal.Key, proposal.Value, writeOptions))
+									}
+
 								}
+
 							}
 
 							node.Advance()
@@ -128,6 +140,11 @@ func main() {
 					) {
 
 						ce(set(42, 42))
+
+						time.Sleep(time.Second)
+						var i int
+						ce(get(42, &i))
+						pt("%d\n", i)
 
 					})
 				})

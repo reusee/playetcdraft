@@ -1,0 +1,10 @@
+syntax = 'proto3';
+package main;
+
+option go_package = "./;main";
+
+message SetProposal {
+  bytes key = 1;
+  bytes value = 2;
+}
+

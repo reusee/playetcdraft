@@ -8,6 +8,7 @@ import (
 	"github.com/reusee/pr"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
+	"google.golang.org/protobuf/proto"
 )
 
 type KVScope struct{}
@@ -15,11 +16,6 @@ type KVScope struct{}
 type Set func(key any, value any) error
 
 type Get func(key any, target any) error
-
-type SetProposal struct {
-	Key   any
-	Value any
-}
 
 func (_ KVScope) KV(
 	peb *pebble.DB,
@@ -32,15 +28,30 @@ func (_ KVScope) KV(
 
 	set = func(key any, value any) (err error) {
 		defer he(&err)
-		buf := new(bytes.Buffer)
+
+		keyBuf := new(bytes.Buffer)
 		ce(sb.Copy(
-			sb.Marshal(SetProposal{
-				Key:   key,
-				Value: value,
+			sb.Marshal(func() (Namespace, any) {
+				return NamespaceKV, key
 			}),
-			sb.Encode(buf),
+			sb.Encode(keyBuf),
 		))
-		ce(node.Propose(wt.Ctx, buf.Bytes()))
+		bsKey := keyBuf.Bytes()
+
+		valueBuf := new(bytes.Buffer)
+		ce(sb.Copy(
+			sb.Marshal(value),
+			sb.Encode(valueBuf),
+		))
+		bsValue := valueBuf.Bytes()
+
+		data, err := proto.Marshal(&SetProposal{
+			Key:   bsKey,
+			Value: bsValue,
+		})
+		ce(err)
+		ce(node.Propose(wt.Ctx, data))
+
 		return
 	}
 

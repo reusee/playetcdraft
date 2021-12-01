@@ -24,7 +24,6 @@ func (_ KVScope) KV(
 	peb *pebble.DB,
 	node raft.Node,
 	wt *pr.WaitTree,
-	runInLoop RunInLoop,
 	reading Reading,
 ) (
 	set Set,
@@ -69,9 +68,7 @@ func (_ KVScope) KV(
 		rKey := *(*[8]byte)(data)
 
 		ready := make(chan struct{})
-		runInLoop(func() {
-			reading.Store(rKey, ready)
-		})
+		reading.Store(rKey, ready)
 		select {
 		case <-ready:
 		case <-time.After(time.Second * 8):

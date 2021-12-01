@@ -16,8 +16,6 @@ type RunLoop func(
 	nodeOK chan struct{},
 )
 
-type RunInLoop func(fn func())
-
 type Reading struct {
 	*sync.Map
 }
@@ -38,11 +36,8 @@ func (_ NodeScope) RunLoop(
 	peb *pebble.DB,
 ) (
 	run RunLoop,
-	runInLoop RunInLoop,
 	reading Reading,
 ) {
-
-	fns := make(chan func())
 
 	reading = Reading{
 		Map: new(sync.Map),
@@ -125,9 +120,6 @@ func (_ NodeScope) RunLoop(
 				case <-wt.Ctx.Done():
 					return
 
-				case fn := <-fns:
-					fn()
-
 				case <-ticker.C:
 					node.Tick()
 
@@ -189,10 +181,6 @@ func (_ NodeScope) RunLoop(
 			}
 
 		})
-	}
-
-	runInLoop = func(fn func()) {
-		fns <- fn
 	}
 
 	return

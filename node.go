@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
-	"github.com/reusee/pr"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -26,7 +25,7 @@ func (_ NodeScope) RaftNode(
 	nodeID NodeID,
 	config *raft.Config,
 	setInit SetInitialState,
-	wt *pr.WaitTree,
+	wt NodeWaitTree,
 	raftPeers []raft.Peer,
 	peb *pebble.DB,
 	ticker *time.Ticker,

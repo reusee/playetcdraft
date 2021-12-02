@@ -12,8 +12,14 @@ func (_ Global) WaitTree() GlobalWaitTree {
 	}
 }
 
+type NodeWaitTree struct {
+	*pr.WaitTree
+}
+
 func (_ NodeScope) WaitTree(
 	global GlobalWaitTree,
-) *pr.WaitTree {
-	return pr.NewWaitTree(global.WaitTree)
+) NodeWaitTree {
+	return NodeWaitTree{
+		WaitTree: pr.NewWaitTree(global.WaitTree),
+	}
 }

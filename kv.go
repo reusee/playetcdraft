@@ -8,7 +8,6 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/reusee/e4"
-	"github.com/reusee/pr"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
 	"google.golang.org/protobuf/proto"
@@ -23,7 +22,7 @@ type Get func(key any, target any) error
 func (_ KVScope) KV(
 	peb *pebble.DB,
 	node raft.Node,
-	wt *pr.WaitTree,
+	wt NodeWaitTree,
 	reading Reading,
 ) (
 	set Set,

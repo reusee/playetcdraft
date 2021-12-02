@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/reusee/dscope"
-	"github.com/reusee/pr"
 	"go.etcd.io/etcd/raft/v3"
 )
 
@@ -30,7 +29,7 @@ func main() {
 
 			nodeScope.Call(func(
 				node raft.Node,
-				wt *pr.WaitTree,
+				wt NodeWaitTree,
 			) {
 
 				// kv

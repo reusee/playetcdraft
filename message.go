@@ -5,7 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/reusee/pr"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3/raftpb"
 )
@@ -16,7 +15,7 @@ type ReceiveMessage chan raftpb.Message
 
 func (_ NodeScope) Message(
 	peer Peer,
-	wt *pr.WaitTree,
+	wt NodeWaitTree,
 	peers Peers,
 ) (
 	send SendMessage,

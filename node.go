@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/reusee/dscope"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/raft/v3/raftpb"
@@ -13,6 +14,23 @@ import (
 )
 
 type NodeScope struct{}
+
+type NewNodeScope func(raft.Peer) Scope
+
+func (_ Global) NewNodeScope(
+	scope Scope,
+	peers Peers,
+) NewNodeScope {
+	return func(raftPeer raft.Peer) Scope {
+		nodeID := NodeID(raftPeer.ID)
+		peer := peers[nodeID]
+
+		defs := dscope.Methods(new(NodeScope))
+		defs = append(defs, &raftPeer, &nodeID, &peer)
+
+		return scope.Fork(defs...)
+	}
+}
 
 type NodeID uint64
 

@@ -15,48 +15,38 @@ func main() {
 
 	global.Call(func(
 		raftPeers []raft.Peer,
-		peers Peers,
+		newNode NewNodeScope,
 	) {
 
 		for _, raftPeer := range raftPeers {
-			raftPeer := raftPeer
-			nodeID := NodeID(raftPeer.ID)
-			peer := peers[nodeID]
+			nodeScope := newNode(raftPeer)
+			var newKV NewKVScope
+			nodeScope.Assign(&newKV)
+			kv := newKV()
 
-			defs := dscope.Methods(new(NodeScope))
-			defs = append(defs, &nodeID, &peer, &raftPeer)
-			nodeScope := global.Fork(defs...)
-
-			nodeScope.Call(func(
-				node raft.Node,
+			kv.Call(func(
+				set Set,
+				get Get,
+				nodeID NodeID,
+				peers Peers,
 				wt NodeWaitTree,
 			) {
 
-				// kv
 				wt.Go(func() {
-					kvDefs := dscope.Methods(new(KVScope))
-					kvDefs = append(kvDefs, &node)
-					kvScope := nodeScope.Fork(kvDefs...)
 
-					kvScope.Call(func(
-						set Set,
-						get Get,
-					) {
+					ce(set(nodeID, int(nodeID)))
 
-						ce(set(nodeID, int(nodeID)))
+					time.Sleep(time.Second)
 
-						time.Sleep(time.Second)
-
-						for n := range peers {
-							var i int
-							ce(get(n, &i))
-							pt("%d %d %d\n", nodeID, n, i)
-							if int(n) != i {
-								panic("bad value")
-							}
+					for n := range peers {
+						var i int
+						ce(get(n, &i))
+						pt("%d %d %d\n", nodeID, n, i)
+						if int(n) != i {
+							panic("bad value")
 						}
+					}
 
-					})
 				})
 
 			})

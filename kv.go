@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/reusee/dscope"
 	"github.com/reusee/e4"
 	"github.com/reusee/sb"
 	"go.etcd.io/etcd/raft/v3"
@@ -14,6 +15,20 @@ import (
 )
 
 type KVScope struct{}
+
+type NewKVScope func() Scope
+
+func (_ NodeScope) NewKVScope(
+	node raft.Node,
+	scope Scope,
+) NewKVScope {
+	return func() Scope {
+		kvDefs := dscope.Methods(new(KVScope))
+		kvDefs = append(kvDefs, &node)
+		kvScope := scope.Fork(kvDefs...)
+		return kvScope
+	}
+}
 
 type Set func(key any, value any) error
 

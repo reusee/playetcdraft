@@ -29,19 +29,12 @@ func main() {
 			nodeScope := global.Fork(defs...)
 
 			nodeScope.Call(func(
-				runLoop RunLoop,
+				node raft.Node,
 				wt *pr.WaitTree,
 			) {
 
-				var node raft.Node
-				nodeOK := make(chan struct{})
-
-				// raft
-				runLoop(&node, nodeOK)
-
 				// kv
 				wt.Go(func() {
-					<-nodeOK
 					kvDefs := dscope.Methods(new(KVScope))
 					kvDefs = append(kvDefs, &node)
 					kvScope := nodeScope.Fork(kvDefs...)

@@ -63,11 +63,11 @@ func (_ KVScope) KV(
 
 		data := make([]byte, 8)
 		binary.LittleEndian.PutUint64(data, uint64(rand.Int63()))
-		ce(node.ReadIndex(wt.Ctx, data))
 		rKey := *(*[8]byte)(data)
 
 		ready := make(chan struct{})
 		reading.Store(rKey, ready)
+		ce(node.ReadIndex(wt.Ctx, data))
 		select {
 		case <-ready:
 		case <-time.After(time.Second * 8):

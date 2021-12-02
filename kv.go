@@ -71,6 +71,7 @@ func (_ KVScope) KV(
 		select {
 		case <-ready:
 		case <-time.After(time.Second * 8):
+			reading.Delete(rKey)
 			return we(ErrTimeout)
 		}
 

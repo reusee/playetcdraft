@@ -29,5 +29,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.8.0 // indirect
 	golang.org/x/exp v0.0.0-20211129234152-8a230f1f7d7a // indirect
-	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 )

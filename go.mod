@@ -9,7 +9,7 @@ require (
 	github.com/reusee/pr v0.0.0-20211128075657-2a34fce9bf06
 	github.com/reusee/sb v0.0.0-20211125083700-4a062b9889a2
 	go.etcd.io/etcd/raft/v3 v3.5.1
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
